@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Intelligent Reader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📰 RSS Intelligent Reader</h1>
+            <p class="subtitle">Il tuo lettore intelligente di feed RSS personalizzato</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="articles">Articoli</button>
+            <button class="tab-btn" data-tab="favorites">Preferiti</button>
+            <button class="tab-btn" data-tab="feeds">Feed</button>
+        </nav>
+
+        <div class="tab-content active" id="articles">
+            <div class="toolbar">
+                <button id="refresh-btn" class="btn btn-primary">🔄 Aggiorna Feed</button>
+                <span id="article-count" class="count-badge">0 articoli non letti</span>
+            </div>
+            <div id="articles-list" class="articles-container">
+                <p class="loading">Caricamento articoli...</p>
+            </div>
+        </div>
+
+        <div class="tab-content" id="favorites">
+            <div class="toolbar">
+                <span id="favorites-count" class="count-badge">0 preferiti</span>
+            </div>
+            <div id="favorites-list" class="articles-container">
+                <p class="loading">Caricamento preferiti...</p>
+            </div>
+        </div>
+
+        <div class="tab-content" id="feeds">
+            <div class="toolbar">
+                <button id="add-feed-btn" class="btn btn-primary">➕ Aggiungi Feed</button>
+            </div>
+            
+            <div id="add-feed-form" class="feed-form" style="display: none;">
+                <input type="text" id="feed-url-input" placeholder="URL del feed RSS" class="input-field">
+                <input type="text" id="feed-name-input" placeholder="Nome del feed (opzionale)" class="input-field">
+                <div class="form-buttons">
+                    <button id="save-feed-btn" class="btn btn-success">Salva</button>
+                    <button id="cancel-feed-btn" class="btn btn-secondary">Annulla</button>
+                </div>
+            </div>
+
+            <div id="feeds-list" class="feeds-container">
+                <p class="loading">Caricamento feed...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="article-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="article-detail"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
