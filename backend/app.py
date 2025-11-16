@@ -1,10 +1,10 @@
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 import logging
-from datetime import import datetime, timedelta
+from datetime import datetime, timedelta
 
 from backend.database import db, init_db, get_db_path
-from backend.config import import get_config
+from backend.config import get_config
 from backend.models import User, Feed, Article, ArticleRead, Favorite, UserInterest
 from backend.services.rss_parser import RSSParser
 from backend.services.ranker import Ranker
