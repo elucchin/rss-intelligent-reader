@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 import logging
@@ -14,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 def create_app(config=None):
     """Application factory for creating Flask app instances."""
-    app = Flask(__name__, template_folder='frontend', static_folder='frontend')
-    app.config['SQLALCHEMY_DATABASE_URI'] = get_db_path()
+    template_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+    app = Flask(__name__, template_folder=template_path, static_folder=template_path)    app.config['SQLALCHEMY_DATABASE_URI'] = get_db_path()
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'    
     if config:
