@@ -36,7 +36,8 @@ user = User.query.filter_by(username='default_user').first()
             if not user:
                 user = User(username='default_user')
                 db.session.add(user)
-                db.session.commit()            session['user_id'] = user.id
+                db.session.commit()
+            session['user_id'] = user.id
     
     # Frontend routes
     @app.route('/')
