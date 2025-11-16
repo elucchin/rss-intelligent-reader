@@ -17,8 +17,12 @@ def create_app(config=None):
     """Application factory for creating Flask app instances."""
     template_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
     app = Flask(__name__, template_folder=template_path, static_folder=template_path)
+    
+    # Configure app
     app.config['SQLALCHEMY_DATABASE_URI'] = get_db_path()
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    
     if config:
         app.config.update(config)
     
