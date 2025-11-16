@@ -32,7 +32,7 @@ def create_app(config=None):
     @app.before_request
     def ensure_user():
         if 'user_id' not in session:
-user = User.query.filter_by(username='default_user').first()
+            user = User.query.filter_by(username='default_user').first()
             if not user:
                 user = User(username='default_user')
                 db.session.add(user)
