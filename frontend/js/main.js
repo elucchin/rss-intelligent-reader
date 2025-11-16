@@ -1,85 +1,57 @@
-document.addEventListener('DOMContentLoaded', () => {
-    setupTabs();
-    loadArticles();
-    loadFavorites();
-    loadFeeds();
-    setupToolbar();
-});
+// Gestione filtri e feed
+let keywordBlacklist = [];
 
-function setupTabs() {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-            document.getElementById(btn.dataset.tab).classList.add('active');
-            
-            if (btn.dataset.tab === 'articles') loadArticles();
-            if (btn.dataset.tab === 'favorites') loadFavorites();
-            if (btn.dataset.tab === 'feeds') loadFeeds();
-        });
-    });
+function setupFilters() {
+    const panel = document.getElementById('filter-panel');
+    if (!panel) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'keywords-input';
+    input.placeholder = 'Parole chiave da escludere (separate da virgola)';
+    panel.appendChild(input);
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Salva Filtri';
+    saveBtn.onclick = () => {
+        keywordBlacklist = input.value.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
+        loadArticles();
+    };
+    panel.appendChild(saveBtn);
+    // Filtro consigliati
+    const onlyRecommendedCheck = document.createElement('input');
+    onlyRecommendedCheck.type = 'checkbox';
+    onlyRecommendedCheck.id = 'only-recommended';
+    panel.appendChild(onlyRecommendedCheck);
+    const labelCheck = document.createElement('label');
+    labelCheck.textContent = 'Mostra solo consigliati';
+    labelCheck.htmlFor = 'only-recommended';
+    panel.appendChild(labelCheck);
+    onlyRecommendedCheck.onchange = () => { loadArticles(); };
 }
-
-function setupToolbar() {
-    const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', fetchAllFeeds);
-
-    const addFeedBtn = document.getElementById('add-feed-btn');
-    if (addFeedBtn) addFeedBtn.addEventListener('click', () => {
-        document.getElementById('add-feed-form').style.display = 'block';
-        addFeedBtn.style.display = 'none';
-    });
-    const cancelFeedBtn = document.getElementById('cancel-feed-btn');
-    if (cancelFeedBtn) cancelFeedBtn.addEventListener('click', () => {
-        document.getElementById('add-feed-form').style.display = 'none';
-        addFeedBtn.style.display = 'inline-block';
-    });
-    const saveFeedBtn = document.getElementById('save-feed-btn');
-    if (saveFeedBtn) saveFeedBtn.addEventListener('click', handleAddFeed);
-}
-
-const API_BASE = '/api';
 
 async function loadArticles() {
     const list = document.getElementById('articles-list');
     list.innerHTML = '<p class="loading">Caricamento articoli...</p>';
     try {
-        const resp = await fetch(`${API_BASE}/articles`);
+        const resp = await fetch('/api/articles');
         if (!resp.ok) throw new Error('Errore caricamento');
-        const articles = await resp.json();
+        let articles = await resp.json();
+        if (keywordBlacklist.length) {
+            articles = articles.filter(a => {
+                return !keywordBlacklist.some(w =>
+                    (a.title && a.title.toLowerCase().includes(w)) ||
+                    (a.description && a.description.toLowerCase().includes(w)) ||
+                    (a.content && a.content.toLowerCase().includes(w))
+                );
+            });
+        }
+        const onlyRecommended = document.getElementById('only-recommended');
+        if (onlyRecommended && onlyRecommended.checked) {
+            articles = articles.filter(a => a.is_recommended);
+        }
         document.getElementById('article-count').textContent = `${articles.length} articoli non letti`;
         renderArticleList(list, articles, false);
     } catch (e) {
         list.innerHTML = '<p style="color: red;">Errore caricamento articoli</p>';
-    }
-}
-
-async function loadFavorites() {
-    const list = document.getElementById('favorites-list');
-    list.innerHTML = '<p class="loading">Caricamento preferiti...</p>';
-    try {
-        const resp = await fetch(`${API_BASE}/favorites`);
-        if (!resp.ok) throw new Error('Errore caricamento');
-        const favorites = await resp.json();
-        document.getElementById('favorites-count').textContent = `${favorites.length} preferiti`;
-        renderArticleList(list, favorites, true);
-    } catch (e) {
-        list.innerHTML = '<p style="color: red;">Errore caricamento preferiti</p>';
-    }
-}
-
-async function loadFeeds() {
-    const list = document.getElementById('feeds-list');
-    list.innerHTML = '<p class="loading">Caricamento feed...</p>';
-    try {
-        const resp = await fetch(`${API_BASE}/feeds`);
-        if (!resp.ok) throw new Error('Errore caricamento');
-        const feeds = await resp.json();
-        renderFeedList(list, feeds);
-    } catch (e) {
-        list.innerHTML = '<p style="color: red;">Errore caricamento feed</p>';
     }
 }
 
@@ -92,8 +64,10 @@ function renderArticleList(container, articles, isFavorite) {
     articles.forEach(article => {
         const card = document.createElement('div');
         card.className = 'article-card';
+        let badge = '';
+        if (article.is_recommended) badge = '<span class="badge">Consigliato</span>';
         card.innerHTML = `
-            <h3>${escapeHtml(article.title)}</h3>
+            <h3>${escapeHtml(article.title)} ${badge}</h3>
             <p>${escapeHtml(article.summary || article.description || 'Nessun riassunto disponibile')}</p>
             <div class="article-meta">
                 <span>${article.source || 'Fonte sconosciuta'}</span>
@@ -120,94 +94,28 @@ function renderFeedList(container, feeds) {
     feeds.forEach(f => {
         const el = document.createElement('div');
         el.className = 'feed-item';
-        el.innerHTML = `<b>${escapeHtml(f.name)}</b>: <span>${escapeHtml(f.url)}</span> <span style="color: #888">${escapeHtml(f.category || '')}</span>`;
+        el.innerHTML = `<b>${escapeHtml(f.name)}</b>: <span>${escapeHtml(f.url)}</span> <span style="color: #888">${escapeHtml(f.category || '')}</span> ` +
+            `<button style='margin:0 0 0 10px;' onclick='deleteFeed(${f.id})'>Elimina</button>`;
         container.appendChild(el);
     });
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('it-IT');
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return text
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-}
-
-async function toggleFavorite(articleId) {
+async function deleteFeed(feedId) {
     try {
-        await fetch(`${API_BASE}/article/${articleId}/favorite`, {
-            method: 'POST'
-        });
-        await loadArticles();
-        await loadFavorites();
-    } catch (e) {
-        alert('Errore nel salvataggio del preferito');
-    }
-}
-
-async function markReadAndShowModal(article) {
-    try {
-        await fetch(`${API_BASE}/article/${article.id}/read`, { method: 'POST' });
-    } catch{}
-    // modal semplicizzata
-    const modal = document.getElementById('article-modal');
-    const detail = document.getElementById('article-detail');
-    detail.innerHTML = `
-        <h2>${escapeHtml(article.title)}</h2>
-        <div><b>Fonte:</b> ${escapeHtml(article.source || '')}</div>
-        <div><b>Data:</b> ${formatDate(article.pub_date)}</div>
-        <p>${escapeHtml(article.content || article.summary || article.description || '')}</p>
-        <a href="${article.link}" target="_blank">Leggi l'articolo completo</a>
-    `;
-    modal.style.display = 'block';
-    modal.querySelector('.close').onclick = () => {
-        modal.style.display = 'none';
-    };
-    window.onclick = event => {
-        if (event.target === modal) modal.style.display = 'none';
-    };
-}
-
-async function handleAddFeed(e) {
-    e.preventDefault();
-    const feedUrl = document.getElementById('feed-url-input').value.trim();
-    const name = document.getElementById('feed-name-input').value.trim();
-    if (!feedUrl) {
-        alert('Inserire URL del feed');
-        return;
-    }
-    try {
-        await fetch(`${API_BASE}/feed/add`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 'feed_url': feedUrl, 'name': name })
-        });
-        document.getElementById('add-feed-form').style.display = 'none';
-        document.getElementById('add-feed-btn').style.display = 'inline-block';
+        await fetch(`/api/feed/${feedId}/delete`, { method: 'POST' });
         await loadFeeds();
         await fetchAllFeeds();
         await loadArticles();
     } catch {
-        alert("Errore durante aggiunta feed");
+        alert('Errore cancellazione feed');
     }
 }
 
-async function fetchAllFeeds() {
-    const btn = document.getElementById('refresh-btn');
-    if (btn) btn.disabled = true;
-    try {
-        await fetch(`${API_BASE}/fetch-all`, { method: 'POST' });
-        await loadArticles();
-    } catch {
-        alert('Errore aggiornamento feed');
-    }
-    if (btn) btn.disabled = false;
-}
+document.addEventListener('DOMContentLoaded', () => {
+    setupTabs();
+    setupFilters();
+    loadArticles();
+    loadFavorites();
+    loadFeeds();
+    setupToolbar();
+});
